@@ -1,62 +1,124 @@
 <template>
-  <div class="task-manager">
-    <h1 class="title">Manajemen Tugas</h1>
-    <form @submit.prevent="addTask" class="task-form">
-      <div class="input-container">
-        <input
-          v-model="newTask"
-          placeholder="Tambahkan tugas baru"
-          required
-          class="task-input"
-        />
-        <input type="date" v-model="newTaskDate" class="task-input" />
-        <button type="submit" class="add-button">Tambah</button>
+  <div>
+    <header>
+      <nav class="navbar">
+        <ul class="nav-list">
+          <li class="nav-item">
+            <button
+              @click="showTodos"
+              :class="{ active: activeMenu === 'todos' }"
+            >
+              Todos
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              @click="showPosts"
+              :class="{ active: activeMenu === 'posts' }"
+            >
+              Post
+            </button>
+          </li>
+        </ul>
+      </nav>
+    </header>
+    <main>
+      <div v-if="activeMenu === 'todos'">
+        <div class="task-manager">
+          <h1 class="title">Manajemen Tugas</h1>
+          <form @submit.prevent="addTask" class="task-form">
+            <div class="input-container">
+              <input
+                v-model="newTask"
+                placeholder="Tambahkan tugas baru"
+                required
+                class="task-input"
+              />
+              <input type="date" v-model="newTaskDate" class="task-input" />
+              <button type="submit" class="add-button">Tambah</button>
+            </div>
+          </form>
+          <div v-if="tasks.length > 0" class="task-list">
+            <h2 class="list-title">Daftar Tugas:</h2>
+            <ul>
+              <li
+                v-for="task in filteredTasks"
+                :key="task.id"
+                class="task-item"
+              >
+                <label class="task-label">
+                  <input
+                    type="checkbox"
+                    @change="toggleComplete(task)"
+                    :checked="task.completed"
+                  />
+                  <span class="checkmark"></span>
+                  <span
+                    class="task-name"
+                    :class="{ completed: task.completed }"
+                  >
+                    {{ task.name }}
+                  </span>
+                  <span class="task-date">{{ task.date }}</span>
+                  <span class="task-status">
+                    {{ task.completed ? "Selesai" : "Belum Selesai" }}
+                  </span>
+                </label>
+                <button @click="removeTask(task)" class="remove-button">
+                  Hapus
+                </button>
+              </li>
+            </ul>
+          </div>
+          <div v-else>
+            <p class="no-tasks">Tidak ada tugas.</p>
+          </div>
+          <div class="filters">
+            <h2 class="list-title">Filter:</h2>
+            <button
+              @click="filter = 'all'"
+              :class="{ active: filter === 'all' }"
+            >
+              Semua
+            </button>
+            <button
+              @click="filter = 'active'"
+              :class="{ active: filter === 'active' }"
+            >
+              Belum Selesai
+            </button>
+            <button
+              @click="filter = 'completed'"
+              :class="{ active: filter === 'completed' }"
+            >
+              Selesai
+            </button>
+          </div>
+        </div>
       </div>
-    </form>
-    <div v-if="tasks.length > 0" class="task-list">
-      <h2 class="list-title">Daftar Tugas:</h2>
-      <ul>
-        <li v-for="task in filteredTasks" :key="task.id" class="task-item">
-          <label class="task-label">
-            <input
-              type="checkbox"
-              @change="toggleComplete(task)"
-              :checked="task.completed"
-            />
-            <span class="checkmark"></span>
-            <span class="task-name" :class="{ completed: task.completed }">{{
-              task.name
-            }}</span>
-            <span class="task-date">{{ task.date }}</span>
-            <span class="task-status">{{
-              task.completed ? "Selesai" : "Belum Selesai"
-            }}</span>
-          </label>
-          <button @click="removeTask(task)" class="remove-button">Hapus</button>
-        </li>
-      </ul>
-    </div>
-    <div v-else>
-      <p class="no-tasks">Tidak ada tugas.</p>
-    </div>
-    <div class="filters">
-      <h2 class="list-title">Filter:</h2>
-      <button @click="filter = 'all'" :class="{ active: filter === 'all' }">
-        Semua
-      </button>
-      <button
-        @click="filter = 'active'"
-        :class="{ active: filter === 'active' }"
-      >
-        Belum Selesai
-      </button>
-      <button
-        @click="filter = 'completed'"
-        :class="{ active: filter === 'completed' }"
-      >
-        Selesai
-      </button>
-    </div>
+      <div v-else-if="activeMenu === 'posts'">
+        <h1>Fitur Postingan</h1>
+        <select v-model="selectedUser">
+          <option v-for="user in users" :key="user.id" :value="user.id">
+            {{ user.name }}
+          </option>
+        </select>
+        <div v-if="filteredPosts.length > 0">
+          <h3>Postingan oleh {{ selectedUserName }}</h3>
+          <ul>
+            <li v-for="post in filteredPosts" :key="post.id">
+              {{ post.title }}
+            </li>
+          </ul>
+        </div>
+        <div v-else>
+          <p>Tidak ada postingan untuk pengguna ini.</p>
+        </div>
+      </div>
+      <div v-else>
+        <p>Pilih menu untuk melihat fitur.</p>
+      </div>
+    </main>
   </div>
 </template>
 
@@ -64,13 +126,70 @@
 export default {
   data() {
     return {
+      users: [],
+      posts: [],
+      activeMenu: "",
+      selectedUser: null,
       newTask: "",
       newTaskDate: "",
       tasks: [],
       filter: "all",
     };
   },
+  computed: {
+    selectedUserName() {
+      const user = this.users.find((u) => u.id === this.selectedUser);
+      return user ? user.name : "";
+    },
+    filteredPosts() {
+      return this.posts.filter((post) => post.userId === this.selectedUser);
+    },
+    filteredTasks() {
+      if (this.filter === "active") {
+        return this.tasks.filter((task) => !task.completed);
+      } else if (this.filter === "completed") {
+        return this.tasks.filter((task) => task.completed);
+      } else {
+        return this.tasks;
+      }
+    },
+  },
   methods: {
+    async fetchUsers() {
+      try {
+        const response = await fetch(
+          "https://jsonplaceholder.typicode.com/users"
+        );
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        const json = await response.json();
+        this.users = json;
+      } catch (error) {
+        console.error("Error fetching users data:", error);
+      }
+    },
+    async fetchPosts() {
+      try {
+        const response = await fetch(
+          "https://jsonplaceholder.typicode.com/posts"
+        );
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        const json = await response.json();
+        this.posts = json;
+      } catch (error) {
+        console.error("Error fetching posts data:", error);
+      }
+    },
+    showTodos() {
+      this.activeMenu = "todos";
+    },
+    showPosts() {
+      this.activeMenu = "posts";
+      this.fetchPosts();
+    },
     addTask() {
       if (this.newTask.trim() !== "") {
         this.tasks.push({
@@ -93,29 +212,60 @@ export default {
       task.completed = !task.completed;
     },
   },
-  computed: {
-    filteredTasks() {
-      if (this.filter === "active") {
-        return this.tasks.filter((task) => !task.completed);
-      } else if (this.filter === "completed") {
-        return this.tasks.filter((task) => task.completed);
-      } else {
-        return this.tasks;
-      }
-    },
+  mounted() {
+    this.fetchUsers();
   },
 };
 </script>
 
 <style scoped>
+.navbar {
+  background-color: #333;
+  padding: 1em;
+  text-align: center;
+  margin-top: -60px;
+}
+
+.nav-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.nav-item {
+  margin: 0 1em;
+}
+
+.nav-item button {
+  background: none;
+  color: white;
+  border: none;
+  padding: 0.5em 1em;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.nav-item button:hover,
+.nav-item button.active {
+  background-color: #575757;
+  border-radius: 5px;
+}
+
+main {
+  padding: 1em;
+}
+
 .task-manager {
   font-family: Arial, sans-serif;
-  max-width: 400px;
-  margin: auto;
-  padding: 70px;
+  max-width: 600px;
+  margin: 2em auto;
+  padding: 2em;
   border: 1px solid #ccc;
-  border-radius: 50px;
-  background-color: #d0a3fd9c;
+  border-radius: 10px;
+  background-color: rgba(249, 249, 249, 0.404);
+  backdrop-filter: blur(px);
 }
 
 .title {
@@ -137,15 +287,11 @@ export default {
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 5px;
-}
-
-.task-input:hover {
-  background-color: #9e8f8f42;
+  margin-right: 10px;
 }
 
 .add-button {
   padding: 8px 16px;
-  margin-left: 10px;
   border: none;
   border-radius: 5px;
   background-color: #4caf50;
@@ -173,12 +319,11 @@ export default {
 }
 
 .filters button:hover {
-  background-color: rgba(77, 171, 82, 0.558);
-  color: white;
+  background-color: #ddd;
 }
 
 .filters button.active {
-  background-color: hsl(122, 39%, 49%);
+  background-color: #4caf50;
   color: white;
 }
 
@@ -198,42 +343,12 @@ export default {
   border: 1px solid #ccc;
   border-radius: 5px;
   background-color: #fff;
-}
-
-.task-item.completed {
-  background-color: #f0f0f0;
+  margin-bottom: 5px;
 }
 
 .task-label {
   display: flex;
   align-items: center;
-}
-
-.task-checkbox {
-  display: none;
-}
-
-.task-checkbox + .checkmark {
-  position: relative;
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  background-color: #eee;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  cursor: pointer;
-}
-
-.task-checkbox:checked + .checkmark:after {
-  content: "";
-  position: absolute;
-  left: 7px;
-  top: 3px;
-  width: 5px;
-  height: 10px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
 }
 
 .task-name {
