@@ -1,88 +1,62 @@
 <template>
-  <div>
-    <header>
-      <nav class="navbar">
-        <ul class="nav-list">
-          <li class="nav-item">
-            <button
-              @click="showTodos"
-              :class="{ active: activeMenu === 'todos' }"
-            >
-              Todos
-            </button>
-          </li>
-          <li class="nav-item">
-            <button
-              @click="showPosts"
-              :class="{ active: activeMenu === 'posts' }"
-            >
-              Post
-            </button>
-          </li>
-        </ul>
-      </nav>
-    </header>
-    <main>
-      <post
-        v-if="activeMenu === 'posts'"
-        :users="users"
-        :selectedUser="selectedUser"
-        :filteredPosts="filteredPosts"
-        :selectedUserName="selectedUserName"
-        @update:selectedUser="updateSelectedUser"
-      ></post>
-      <todos
-        v-else-if="activeMenu === 'todos'"
-        :tasks="tasks"
-        :filteredTasks="filteredTasks"
-      ></todos>
-      <SlotContent v-else></SlotContent>
-    </main>
+  <div id="app">
+    <q-layout view="hHh lpR fFf">
+      <q-header elevated class="bg-dark text-white" height-hint="98">
+        <q-toolbar>
+          <q-toolbar-title>
+            <q-avatar>
+              <img
+                src="https://cdn.quasar.dev/logo-v2/svg/logo-mono-white.svg"
+              />
+            </q-avatar>
+            UAS
+          </q-toolbar-title>
+        </q-toolbar>
+
+        <q-tabs ref="myTabs" align="left">
+          <q-route-tab to="/todos" label="Todos" />
+          <q-route-tab to="/posts" label="Posts" />
+          <q-route-tab to="/albums" label="Albums" />
+        </q-tabs>
+      </q-header>
+
+      <q-page-container>
+        <router-view :users="users" />
+      </q-page-container>
+    </q-layout>
   </div>
 </template>
 
 <script>
-import Post from "./components/post.vue";
-import Todos from "./components/todos.vue";
-import SlotContent from "./components/slot.vue";
+import { defineComponent, ref, onMounted } from "vue";
+import {
+  QLayout,
+  QHeader,
+  QToolbar,
+  QToolbarTitle,
+  QAvatar,
+  QTabs,
+  QRouteTab,
+  QPageContainer,
+} from "quasar";
+import { useTasksStore } from "./stores/tasks.store";
 
-export default {
+export default defineComponent({
   components: {
-    Post,
-    Todos,
-    SlotContent,
+    QLayout,
+    QHeader,
+    QToolbar,
+    QToolbarTitle,
+    QAvatar,
+    QTabs,
+    QRouteTab,
+    QPageContainer,
   },
-  data() {
-    return {
-      users: [],
-      posts: [],
-      activeMenu: "",
-      selectedUser: null,
-      tasks: [],
-      filter: "all",
-    };
-  },
-  computed: {
-    selectedUserName() {
-      const user = this.users.find((u) => u.id === this.selectedUser);
-      return user ? user.name : "";
-    },
-    filteredPosts() {
-      if (!this.selectedUser) return [];
-      return this.posts.filter((post) => post.userId === this.selectedUser);
-    },
-    filteredTasks() {
-      if (this.filter === "active") {
-        return this.tasks.filter((task) => !task.completed);
-      } else if (this.filter === "completed") {
-        return this.tasks.filter((task) => task.completed);
-      } else {
-        return this.tasks;
-      }
-    },
-  },
-  methods: {
-    async fetchUsers() {
+  setup() {
+    const users = ref([]);
+    const tasksStore = useTasksStore();
+
+    const fetchUsers = async () => {
       try {
         const response = await fetch(
           "https://jsonplaceholder.typicode.com/users"
@@ -90,46 +64,33 @@ export default {
         if (!response.ok) {
           throw new Error("Network response was not ok");
         }
-        const json = await response.json();
-        this.users = json;
+        users.value = await response.json();
       } catch (error) {
         console.error("Error fetching users data:", error);
       }
-    },
-    async fetchPosts() {
-      try {
-        const response = await fetch(
-          "https://jsonplaceholder.typicode.com/posts"
-        );
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        const json = await response.json();
-        this.posts = json;
-      } catch (error) {
-        console.error("Error fetching posts data:", error);
-      }
-    },
-    showTodos() {
-      this.activeMenu = "todos";
-    },
-    showPosts() {
-      this.activeMenu = "posts";
-      this.fetchPosts();
-    },
-    updateSelectedUser(newUser) {
-      this.selectedUser = newUser;
-    },
+    };
+
+    onMounted(() => {
+      fetchUsers();
+    });
+
+    return {
+      users,
+    };
   },
-  mounted() {
-    this.fetchUsers();
-  },
-};
+});
 </script>
 
 <style scoped>
+.bg-dark {
+  background-color: #493b3b;
+}
+
+.text-white {
+  color: white;
+}
+
 .navbar {
-  background-color: #333;
   padding: 1em;
   text-align: center;
   margin-top: -60px;

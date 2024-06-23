@@ -1,33 +1,39 @@
 <template>
   <div>
     <div class="task-manager">
-      <h1 class="title">Manajemen Tugas</h1>
+      <h2 class="title">Manajemen Tugas</h2>
+      <br />
       <form @submit.prevent="addTask" class="task-form">
         <div class="input-container">
           <input
-            v-model="newTask"
+            v-model="newTask.name"
             placeholder="Tambahkan tugas baru"
             required
             class="task-input"
           />
-          <input type="date" v-model="newTaskDate" class="task-input" />
+          <input
+            type="date"
+            v-model="newTask.date"
+            required
+            class="task-input"
+          />
           <button type="submit" class="add-button">Tambah</button>
         </div>
       </form>
-      <div
-        v-if="tasks.length > 0 || filteredTasks.length > 0"
-        class="task-list"
-      >
-        <h2 class="list-title">Daftar Tugas:</h2>
+      <div v-if="filteredTasks.length > 0" class="task-list">
         <ul>
-          <li v-for="task in filteredTasks" :key="task.id" class="task-item">
+          <h3 class="list-title">Daftar Tugas:</h3>
+          <li
+            v-for="(task, index) in filteredTasks"
+            :key="task.id"
+            class="task-item"
+          >
             <label class="task-label">
               <input
                 type="checkbox"
                 @change="toggleComplete(task)"
                 :checked="task.completed"
               />
-              <span class="checkmark"></span>
               <span class="task-name" :class="{ completed: task.completed }">{{
                 task.name
               }}</span>
@@ -36,7 +42,7 @@
                 task.completed ? "Selesai" : "Belum Selesai"
               }}</span>
             </label>
-            <button @click="removeTask(task)" class="remove-button">
+            <button @click="removeTask(index)" class="remove-button">
               Hapus
             </button>
           </li>
@@ -46,18 +52,18 @@
         <p class="no-tasks">Tidak ada tugas.</p>
       </div>
       <div class="filters">
-        <h2 class="list-title">Filter:</h2>
-        <button @click="setFilter('all')" :class="{ active: filter === 'all' }">
+        <h3 class="list-title">Filter:</h3>
+        <button @click="showAll" :class="{ active: filter === 'all' }">
           Semua
         </button>
         <button
-          @click="setFilter('active')"
+          @click="showIncomplete"
           :class="{ active: filter === 'active' }"
         >
           Belum Selesai
         </button>
         <button
-          @click="setFilter('completed')"
+          @click="showCompleted"
           :class="{ active: filter === 'completed' }"
         >
           Selesai
@@ -68,59 +74,75 @@
 </template>
 
 <script>
+import { ref, computed } from "vue";
+import { useTasksStore } from "../stores/tasks.store";
+
 export default {
-  data() {
-    return {
-      newTask: "",
-      newTaskDate: "",
-      filter: "all",
-    };
-  },
-  props: {
-    tasks: Array,
-  },
-  computed: {
-    filteredTasks() {
-      if (this.filter === "all") {
-        return this.tasks;
-      } else if (this.filter === "active") {
-        return this.tasks.filter((task) => !task.completed);
-      } else if (this.filter === "completed") {
-        return this.tasks.filter((task) => task.completed);
+  setup() {
+    const store = useTasksStore();
+
+    const newTask = ref({ name: "", date: "" });
+    const filter = ref("all");
+
+    const tasks = store.activities;
+    const filteredTasks = computed(() => {
+      switch (filter.value) {
+        case "active":
+          return tasks.filter((task) => !task.completed);
+        case "completed":
+          return tasks.filter((task) => task.completed);
+        default:
+          return tasks;
       }
-    },
-  },
-  methods: {
-    addTask() {
-      if (this.newTask.trim() !== "") {
-        this.tasks.push({
-          id: Date.now(),
-          name: this.newTask,
-          date: this.newTaskDate,
-          completed: false,
+    });
+
+    const addTask = () => {
+      if (newTask.value.name.trim() !== "" && newTask.value.date !== "") {
+        store.addActivity({
+          name: newTask.value.name,
+          date: newTask.value.date,
         });
-        this.newTask = "";
-        this.newTaskDate = "";
+        newTask.value = { name: "", date: "" };
       }
-    },
-    removeTask(task) {
-      const index = this.tasks.indexOf(task);
-      if (index !== -1) {
-        this.tasks.splice(index, 1);
-      }
-    },
-    toggleComplete(task) {
+    };
+
+    const removeTask = (index) => {
+      store.deleteActivity(index);
+    };
+
+    const toggleComplete = (task) => {
       task.completed = !task.completed;
-    },
-    setFilter(filter) {
-      this.filter = filter;
-    },
+    };
+
+    const showAll = () => {
+      filter.value = "all";
+    };
+
+    const showIncomplete = () => {
+      filter.value = "active";
+    };
+
+    const showCompleted = () => {
+      filter.value = "completed";
+    };
+
+    return {
+      tasks,
+      filteredTasks,
+      newTask,
+      filter,
+      addTask,
+      removeTask,
+      toggleComplete,
+      showAll,
+      showIncomplete,
+      showCompleted,
+    };
   },
 };
 </script>
 
 <style scoped>
-/* Gaya untuk todos.vue */
 .task-manager {
   font-family: Arial, sans-serif;
   max-width: 600px;
@@ -129,7 +151,7 @@ export default {
   border: 1px solid #ccc;
   border-radius: 10px;
   background-color: rgba(249, 249, 249, 0.404);
-  backdrop-filter: blur(px);
+  backdrop-filter: blur(4px);
 }
 
 .title {
@@ -243,10 +265,6 @@ export default {
 }
 
 .remove-button:hover {
-  background-color: #d32f2f;
-}
-
-.no-tasks {
-  text-align: center;
+  background-color: #e53935;
 }
 </style>
